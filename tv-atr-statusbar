@@ -1,0 +1,17 @@
+//@version=6
+indicator(title="ATR Status", shorttitle="ATR", overlay=true, timeframe="", timeframe_gaps=true)
+
+length    = input.int(title="Length", defval=14, minval=1)
+smoothing = input.string(title="Smoothing", defval="RMA", options=["RMA", "SMA", "EMA", "WMA"])
+
+ma_function(source, length) =>
+    switch smoothing
+        "RMA" => ta.rma(source, length)
+        "SMA" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        => ta.wma(source, length)
+
+atr_val = ma_function(ta.tr(true), length)
+
+plot(atr_val,     title="ATR",   display=display.status_line, color=color.new(color.red,    0))
+plot(atr_val * 2, title="ATR×2", display=display.status_line, color=color.new(color.orange, 0))
