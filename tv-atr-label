@@ -19,12 +19,12 @@ if barstate.islast
     label.delete(lbl)
     lbl := label.new(
          x         = bar_index,
-         y         = high,
+         y         = ta.highest(high, 50),
          text      = "ATR  " + str.tostring(atr_val, "#.00") + "     2×ATR  " + str.tostring(atr_val * 2, "#.00"),
          xloc      = xloc.bar_index,
-         yloc      = yloc.abovebar,
+         yloc      = yloc.price,
          color     = color.new(color.navy, 10),
          textcolor = color.white,
-         style     = label.style_label_down,
+         style     = label.style_none,
          size      = size.normal
     )
