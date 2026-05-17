@@ -23,41 +23,26 @@ hline(0, "Zero", color=color.new(color.gray, 50))
 plot(delta,  "Delta",   color=deltaColor,      style=plot.style_histogram)
 plot(volSMA, "Vol SMA", color=color.yellow,    linewidth=lineWidth)
 
-// ── Last-bar overlay: Ask (green) / Bid (red) / Delta ────────────────────
-var label lAsk   = na
-var label lBid   = na
-var label lDelta = na
+// ── Last-bar overlay: Ask (green) / Bid (red) / Delta — pinned top-right ──
+var table infoTable = table.new(position.top_right, 2, 3,
+     bgcolor      = color.new(color.black, 60),
+     border_width = 1,
+     border_color = color.new(color.gray, 60))
 
 if barstate.islast
-    // Dynamic vertical step so labels stay readable regardless of scale
-    float hi   = ta.highest(math.abs(delta), 50)
-    float step = math.max(hi, math.abs(delta)) * 0.10
-    float yBase = (delta >= 0 ? delta : 0.0) + step
+    color dColor = delta >= 0 ? color.green : color.red
 
-    label.delete(lAsk)
-    label.delete(lBid)
-    label.delete(lDelta)
+    table.cell(infoTable, 0, 0, "Ask",
+         text_color = color.white,  text_halign = text.align_left,  text_size = size.small)
+    table.cell(infoTable, 1, 0, str.tostring(bulls, "#"),
+         text_color = color.green,  text_halign = text.align_right, text_size = size.small)
 
-    lAsk := label.new(
-         x         = bar_index,
-         y         = yBase + step * 2,
-         text      = "Ask: " + str.tostring(bulls, "#"),
-         style     = label.style_none,
-         textcolor = color.green,
-         size      = size.small)
+    table.cell(infoTable, 0, 1, "Bid",
+         text_color = color.white,  text_halign = text.align_left,  text_size = size.small)
+    table.cell(infoTable, 1, 1, str.tostring(bears, "#"),
+         text_color = color.red,    text_halign = text.align_right, text_size = size.small)
 
-    lBid := label.new(
-         x         = bar_index,
-         y         = yBase + step,
-         text      = "Bid: " + str.tostring(bears, "#"),
-         style     = label.style_none,
-         textcolor = color.red,
-         size      = size.small)
-
-    lDelta := label.new(
-         x         = bar_index,
-         y         = yBase,
-         text      = "Δ: " + str.tostring(delta, "#"),
-         style     = label.style_none,
-         textcolor = deltaColor,
-         size      = size.small)
+    table.cell(infoTable, 0, 2, "Delta",
+         text_color = color.white,  text_halign = text.align_left,  text_size = size.small)
+    table.cell(infoTable, 1, 2, str.tostring(delta, "#"),
+         text_color = dColor,       text_halign = text.align_right, text_size = size.small)
