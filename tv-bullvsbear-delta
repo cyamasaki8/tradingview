@@ -1,0 +1,63 @@
+//@version=6
+indicator("Volume Bull vs Bear Delta", shorttitle="VolDelta", overlay=false)
+
+// ── Inputs ────────────────────────────────────────────────────────────────
+int   volAvgPeriod = input.int(20, "Volume SMA Period", minval=1)
+int   lineWidth    = input.int(2,  "SMA Line Width",    minval=1)
+color posColor     = input.color(color.new(color.green, 0), "Positive Delta Color")
+color negColor     = input.color(color.new(color.red,   0), "Negative Delta Color")
+
+// ── Volume decomposition (price-range proxy) ──────────────────────────────
+float priceRange = high - low > 0 ? high - low : na
+float bulls      = (close - low)   / priceRange * volume   // ask-side proxy
+float bears      = (high  - close) / priceRange * volume   // bid-side proxy
+float delta      = bulls - bears
+
+color deltaColor = delta >= 0 ? posColor : negColor
+
+// ── Volume SMA ────────────────────────────────────────────────────────────
+float volSMA = ta.sma(volume, volAvgPeriod)
+
+// ── Plots ─────────────────────────────────────────────────────────────────
+hline(0, "Zero", color=color.new(color.gray, 50))
+plot(delta,  "Delta",   color=deltaColor,      style=plot.style_histogram)
+plot(volSMA, "Vol SMA", color=color.yellow,    linewidth=lineWidth)
+
+// ── Last-bar overlay: Ask (green) / Bid (red) / Delta ────────────────────
+var label lAsk   = na
+var label lBid   = na
+var label lDelta = na
+
+if barstate.islast
+    // Dynamic vertical step so labels stay readable regardless of scale
+    float hi   = ta.highest(math.abs(delta), 50)
+    float step = math.max(hi, math.abs(delta)) * 0.10
+    float yBase = (delta >= 0 ? delta : 0.0) + step
+
+    label.delete(lAsk)
+    label.delete(lBid)
+    label.delete(lDelta)
+
+    lAsk := label.new(
+         x         = bar_index,
+         y         = yBase + step * 2,
+         text      = "Ask: " + str.tostring(bulls, "#"),
+         style     = label.style_none,
+         textcolor = color.green,
+         size      = size.small)
+
+    lBid := label.new(
+         x         = bar_index,
+         y         = yBase + step,
+         text      = "Bid: " + str.tostring(bears, "#"),
+         style     = label.style_none,
+         textcolor = color.red,
+         size      = size.small)
+
+    lDelta := label.new(
+         x         = bar_index,
+         y         = yBase,
+         text      = "Δ: " + str.tostring(delta, "#"),
+         style     = label.style_none,
+         textcolor = deltaColor,
+         size      = size.small)
