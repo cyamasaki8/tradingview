@@ -39,6 +39,8 @@ o1[1]  // ← this shifts by chart bars, not HTF bars
 - Generic arrays: `array.new<box>()`, `array.new<line>()`, `array.new<label>()` (not type-specific constructors)
 - Method syntax: `arr.clear()`, `obj.delete()`, `arr.push()`, `arr.get(i)`
 - `switch` expressions with `=>` arms, default arm has no label
+- Colon one-liner (`: expression`) works for `if`/`switch` only — **not** for `for` loops; `for` bodies must always be on an indented next line
+- `request.security()` supports scalar series and tuples only — passing `array.from()` as the expression arg silently fails (indicator drops to a sub-panel); fetch individual offsets as separate calls instead
 
 ## Indicator Inventory
 
