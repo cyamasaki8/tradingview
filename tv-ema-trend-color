@@ -13,14 +13,12 @@ lineWidth   = input.int(2,    "Line Width",    minval=1, maxval=4)
 colorCandles = input.bool(true, "Color Candles")
 
 // ── Calculation ───────────────────────────────────────────────────────────────
-emaVal    = ta.ema(src, length)
-lineCol   = src >= emaVal ? bullCol : bearCol
-
-// Candle color is fixed at bar open — does not change if price crosses EMA mid-bar
-candleCol = open >= emaVal ? bullCol : bearCol
+emaVal = ta.ema(src, length)
+col    = src >= emaVal ? bullCol : bearCol
 
 // ── Plot ──────────────────────────────────────────────────────────────────────
-plot(emaVal, "EMA", color=lineCol, linewidth=lineWidth)
+plot(emaVal, "EMA", color=col, linewidth=lineWidth)
 
-barCol = colorCandles ? candleCol : na
-plotcandle(open, high, low, close, color=barCol, wickcolor=barCol, bordercolor=barCol)
+// Candle color overrides: trend is determined by close vs EMA, not open vs close
+candleCol = colorCandles ? col : na
+plotcandle(open, high, low, close, color=candleCol, wickcolor=candleCol, bordercolor=candleCol)
