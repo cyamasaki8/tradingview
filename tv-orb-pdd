@@ -1,0 +1,94 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © cyamactive8
+
+//@version=6
+indicator("ORB + Pink Doo Doo", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+string g1     = "── Open Range Breakout (ORB) ──"
+orbCol        = input.color(color.white,   "Color",       group=g1)
+orbLineW      = input.int(2, "Width", minval=1, maxval=4, group=g1)
+showORBLabels = input.bool(true, "Show Labels",            group=g1)
+
+string g2     = "── Pink Doo Doo (PDD) ──"
+pddCol        = input.color(color.fuchsia, "Color",       group=g2)
+pddLineW      = input.int(2, "Width", minval=1, maxval=4, group=g2)
+showPDDLabel  = input.bool(true, "Show Label",             group=g2)
+
+TZ = "America/New_York"
+
+// ── Session flags ─────────────────────────────────────────────────────────────
+// All session matching uses US Eastern time regardless of chart timezone.
+// Works best on intraday charts (1–15 min); ORB range accuracy degrades on
+// timeframes > 15 min since a single bar may span beyond the 9:30-9:45 window.
+inORBWindow  = not na(time(timeframe.period, "0930-0945", TZ))
+inRTH        = not na(time(timeframe.period, "0930-1600", TZ))
+in1600Block  = not na(time(timeframe.period, "1600-1615", TZ))
+
+newRTHDay    = inRTH and not inRTH[1]        // first bar of RTH each day
+orbJustEnded = not inORBWindow and inORBWindow[1]  // bar right after ORB window closes
+rthJustEnded = not inRTH and inRTH[1]        // first bar after RTH (≈ 16:00)
+at1600       = in1600Block and not in1600Block[1]  // first bar of 16:00 block
+
+// ── ORB ───────────────────────────────────────────────────────────────────────
+var float orbHigh   = na
+var float orbLow    = na
+var int   orbStartT = na  // timestamp of the 9:30 bar (ORB range start)
+var line  orbHLine  = na
+var line  orbLLine  = na
+
+// Reset each RTH day; releasing the var references stops extension of prior lines
+// (the prior day's lines remain on the chart, capped at their last x2)
+if newRTHDay
+    orbHigh   := na
+    orbLow    := na
+    orbStartT := time
+    orbHLine  := na
+    orbLLine  := na
+
+// Accumulate the 9:30–9:44 range
+if inORBWindow
+    orbHigh := na(orbHigh) ? high : math.max(orbHigh, high)
+    orbLow  := na(orbLow)  ? low  : math.min(orbLow,  low)
+
+// Draw at 9:45 — extend.right keeps lines visible until we cap them at 16:00
+if orbJustEnded and not na(orbHigh)
+    orbHLine := line.new(orbStartT, orbHigh, time, orbHigh,
+         xloc=xloc.bar_time, color=orbCol, style=line.style_dashed,
+         width=orbLineW, extend=extend.right)
+    orbLLine := line.new(orbStartT, orbLow, time, orbLow,
+         xloc=xloc.bar_time, color=orbCol, style=line.style_dashed,
+         width=orbLineW, extend=extend.right)
+    if showORBLabels
+        label.new(orbStartT, orbHigh, "ORB H",
+             xloc=xloc.bar_time, style=label.style_none,
+             color=color(na), textcolor=orbCol, size=size.tiny)
+        label.new(orbStartT, orbLow, "ORB L",
+             xloc=xloc.bar_time, style=label.style_none,
+             color=color(na), textcolor=orbCol, size=size.tiny)
+
+// Cap ORB lines at RTH close (16:00 ET)
+// rthJustEnded fires on the first bar after RTH; its `time` == end of last RTH bar
+if rthJustEnded and not na(orbHLine)
+    orbHLine.set_extend(extend.none)
+    orbHLine.set_x2(time)
+    orbLLine.set_extend(extend.none)
+    orbLLine.set_x2(time)
+
+// ── PDD ───────────────────────────────────────────────────────────────────────
+// Records the open price of the 16:00 ET bar and holds that level through the
+// entire overnight GLOBEX session and the following RTH until the next 16:00.
+var line pddLine = na
+
+if at1600
+    // Cap and freeze the previous day's PDD line right at this 16:00 boundary
+    if not na(pddLine)
+        pddLine.set_extend(extend.none)
+        pddLine.set_x2(time)
+    // New PDD from today's 16:00 open, extending right until next at1600
+    pddLine := line.new(time, open, time, open,
+         xloc=xloc.bar_time, color=pddCol, width=pddLineW, extend=extend.right)
+    if showPDDLabel
+        label.new(time, open, "PDD",
+             xloc=xloc.bar_time, style=label.style_none,
+             color=color(na), textcolor=pddCol, size=size.tiny)
