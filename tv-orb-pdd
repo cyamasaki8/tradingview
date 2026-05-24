@@ -36,15 +36,22 @@ var float orbLow    = na
 var int   orbStartT = na  // timestamp of the 9:30 bar (ORB range start)
 var line  orbHLine  = na
 var line  orbLLine  = na
+var label orbHTag   = na  // floating price balloon at right edge
+var label orbLTag   = na
 
-// Reset each RTH day; releasing the var references stops extension of prior lines
-// (the prior day's lines remain on the chart, capped at their last x2)
+// Reset each RTH day; delete previous day's balloons and release line refs
 if newRTHDay
     orbHigh   := na
     orbLow    := na
     orbStartT := time
     orbHLine  := na
     orbLLine  := na
+    if not na(orbHTag)
+        orbHTag.delete()
+        orbHTag := na
+    if not na(orbLTag)
+        orbLTag.delete()
+        orbLTag := na
 
 // Accumulate the 9:30–9:44 range
 if inORBWindow
@@ -60,12 +67,21 @@ if orbJustEnded and not na(orbHigh)
          xloc=xloc.bar_time, color=orbCol, style=line.style_dashed,
          width=orbLineW, extend=extend.right)
     if showORBLabels
-        label.new(orbStartT, orbHigh, "ORB H",
-             xloc=xloc.bar_time, style=label.style_none,
-             color=color(na), textcolor=orbCol, size=size.tiny)
-        label.new(orbStartT, orbLow, "ORB L",
-             xloc=xloc.bar_time, style=label.style_none,
-             color=color(na), textcolor=orbCol, size=size.tiny)
+        orbHTag := label.new(bar_index, orbHigh,
+             "ORB H\n" + str.tostring(orbHigh, format.mintick),
+             xloc=xloc.bar_index, style=label.style_label_left,
+             color=orbCol, textcolor=color.black, size=size.small)
+        orbLTag := label.new(bar_index, orbLow,
+             "ORB L\n" + str.tostring(orbLow, format.mintick),
+             xloc=xloc.bar_index, style=label.style_label_left,
+             color=orbCol, textcolor=color.black, size=size.small)
+
+// Float ORB balloons at the right edge throughout RTH
+if showORBLabels and inRTH
+    if not na(orbHTag)
+        orbHTag.set_x(bar_index)
+    if not na(orbLTag)
+        orbLTag.set_x(bar_index)
 
 // Cap ORB lines at RTH close (16:00 ET)
 // rthJustEnded fires on the first bar after RTH; its `time` == end of last RTH bar
@@ -78,17 +94,26 @@ if rthJustEnded and not na(orbHLine)
 // ── PDD ───────────────────────────────────────────────────────────────────────
 // Records the open price of the 16:00 ET bar and holds that level through the
 // entire overnight GLOBEX session and the following RTH until the next 16:00.
-var line pddLine = na
+var line  pddLine = na
+var label pddTag  = na  // floating price balloon at right edge
 
 if at1600
-    // Cap and freeze the previous day's PDD line right at this 16:00 boundary
+    // Cap and freeze the previous day's PDD line and balloon
     if not na(pddLine)
         pddLine.set_extend(extend.none)
         pddLine.set_x2(time)
+    if not na(pddTag)
+        pddTag.delete()
+        pddTag := na
     // New PDD from today's 16:00 open, extending right until next at1600
     pddLine := line.new(time, open, time, open,
          xloc=xloc.bar_time, color=pddCol, width=pddLineW, extend=extend.right)
     if showPDDLabel
-        label.new(time, open, "PDD",
-             xloc=xloc.bar_time, style=label.style_none,
-             color=color(na), textcolor=pddCol, size=size.tiny)
+        pddTag := label.new(bar_index, open,
+             "PDD\n" + str.tostring(open, format.mintick),
+             xloc=xloc.bar_index, style=label.style_label_left,
+             color=pddCol, textcolor=color.white, size=size.small)
+
+// Float PDD balloon at the right edge on every bar
+if showPDDLabel and not na(pddTag)
+    pddTag.set_x(bar_index)
