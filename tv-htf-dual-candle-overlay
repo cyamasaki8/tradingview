@@ -6,70 +6,68 @@ indicator("HTF Dual Candle Overlay", overlay=true, max_boxes_count=50, max_lines
 
 // ── Overlay 1 Inputs ──────────────────────────────────────────────────────────
 string g1  = "── Overlay 1 ──"
-htf1TF     = input.timeframe("60",  "Timeframe",                         group=g1)
-htf1Count  = input.int(23, "Candles to Show", minval=1, maxval=25,       group=g1)
-htf1Width  = input.int(3,  "Candle Width (bars)",  minval=2, maxval=20,  group=g1)
-htf1Gap    = input.int(1,  "Gap Between Candles",  minval=0, maxval=10,  group=g1)
-htf1Right  = input.int(5,  "Gap Right of Last Bar", minval=0, maxval=50, group=g1)
-htf1Labels = input.bool(true, "Show Labels",                              group=g1)
-htf1Bull   = input.color(color.new(color.teal,   15), "Bullish Body",    group=g1)
-htf1Bear   = input.color(color.new(color.maroon, 15), "Bearish Body",    group=g1)
-htf1Wick   = input.color(color.new(color.gray,   20), "Wick",            group=g1)
+htf1TF     = input.timeframe("60",  "Timeframe",                          group=g1)
+htf1Count  = input.int(23, "Candles to Show", minval=1, maxval=25,        group=g1)
+htf1Width  = input.int(3,  "Candle Width (bars)",  minval=2, maxval=20,   group=g1)
+htf1Gap    = input.int(1,  "Gap Between Candles",  minval=0, maxval=10,   group=g1)
+htf1Right  = input.int(5,  "Gap Right of Last Bar", minval=0, maxval=50,  group=g1)
+htf1Labels = input.bool(true, "Show Labels",                               group=g1)
+htf1Bull   = input.color(color.new(color.teal,   15), "Bullish Body",     group=g1)
+htf1Bear   = input.color(color.new(color.maroon, 15), "Bearish Body",     group=g1)
+htf1Wick   = input.color(color.new(color.gray,   20), "Wick",             group=g1)
 
 // ── Overlay 2 Inputs ──────────────────────────────────────────────────────────
 string g2  = "── Overlay 2 ──"
-htf2TF     = input.timeframe("W",   "Timeframe",                          group=g2)
-htf2Count  = input.int(4,  "Candles to Show", minval=1, maxval=10,        group=g2)
-htf2Width  = input.int(7,  "Candle Width (bars)",  minval=2, maxval=30,   group=g2)
-htf2Gap    = input.int(3,  "Gap Between Candles",  minval=0, maxval=10,   group=g2)
+htf2TF     = input.timeframe("W",   "Timeframe",                           group=g2)
+htf2Count  = input.int(4,  "Candles to Show", minval=1, maxval=10,         group=g2)
+htf2Width  = input.int(7,  "Candle Width (bars)",  minval=2, maxval=30,    group=g2)
+htf2Gap    = input.int(3,  "Gap Between Candles",  minval=0, maxval=10,    group=g2)
 htf2Right  = input.int(100, "Gap Right of Last Bar", minval=0, maxval=200, group=g2)
-htf2Labels = input.bool(true, "Show Labels",                               group=g2)
-htf2Bull   = input.color(color.new(color.green,  25), "Bullish Body",     group=g2)
-htf2Bear   = input.color(color.new(color.red,    25), "Bearish Body",     group=g2)
-htf2Wick   = input.color(color.new(color.silver, 30), "Wick",             group=g2)
+htf2Labels = input.bool(true, "Show Labels",                                group=g2)
+htf2Bull   = input.color(color.new(color.green,  25), "Bullish Body",      group=g2)
+htf2Bear   = input.color(color.new(color.red,    25), "Bearish Body",      group=g2)
+htf2Wick   = input.color(color.new(color.silver, 30), "Wick",              group=g2)
 
-// ── HTF 1 Data ────────────────────────────────────────────────────────────────
-// array.from() inside request.security() evaluates each [n] in the HTF context,
-// so index 0 = current HTF bar, index N = N HTF bars ago. Max 25 candles.
-float[] htf1_o = request.security(syminfo.tickerid, htf1TF, array.from(
-    open,     open[1],  open[2],  open[3],  open[4],
-    open[5],  open[6],  open[7],  open[8],  open[9],
-    open[10], open[11], open[12], open[13], open[14],
-    open[15], open[16], open[17], open[18], open[19],
-    open[20], open[21], open[22], open[23], open[24]))
-float[] htf1_h = request.security(syminfo.tickerid, htf1TF, array.from(
-    high,     high[1],  high[2],  high[3],  high[4],
-    high[5],  high[6],  high[7],  high[8],  high[9],
-    high[10], high[11], high[12], high[13], high[14],
-    high[15], high[16], high[17], high[18], high[19],
-    high[20], high[21], high[22], high[23], high[24]))
-float[] htf1_l = request.security(syminfo.tickerid, htf1TF, array.from(
-    low,      low[1],   low[2],   low[3],   low[4],
-    low[5],   low[6],   low[7],   low[8],   low[9],
-    low[10],  low[11],  low[12],  low[13],  low[14],
-    low[15],  low[16],  low[17],  low[18],  low[19],
-    low[20],  low[21],  low[22],  low[23],  low[24]))
-float[] htf1_c = request.security(syminfo.tickerid, htf1TF, array.from(
-    close,     close[1],  close[2],  close[3],  close[4],
-    close[5],  close[6],  close[7],  close[8],  close[9],
-    close[10], close[11], close[12], close[13], close[14],
-    close[15], close[16], close[17], close[18], close[19],
-    close[20], close[21], close[22], close[23], close[24]))
+// ── HTF 1 Data — one tuple call per offset, [n] inside = n HTF bars ago ──────
+// request.security() does not support array return types; individual calls are
+// packed into arrays at barstate.islast instead. Max 25 candles = 25 calls.
+[h1_o0,  h1_h0,  h1_l0,  h1_c0 ] = request.security(syminfo.tickerid, htf1TF, [open,     high,     low,     close    ], lookahead=barmerge.lookahead_off)
+[h1_o1,  h1_h1,  h1_l1,  h1_c1 ] = request.security(syminfo.tickerid, htf1TF, [open[1],  high[1],  low[1],  close[1] ], lookahead=barmerge.lookahead_off)
+[h1_o2,  h1_h2,  h1_l2,  h1_c2 ] = request.security(syminfo.tickerid, htf1TF, [open[2],  high[2],  low[2],  close[2] ], lookahead=barmerge.lookahead_off)
+[h1_o3,  h1_h3,  h1_l3,  h1_c3 ] = request.security(syminfo.tickerid, htf1TF, [open[3],  high[3],  low[3],  close[3] ], lookahead=barmerge.lookahead_off)
+[h1_o4,  h1_h4,  h1_l4,  h1_c4 ] = request.security(syminfo.tickerid, htf1TF, [open[4],  high[4],  low[4],  close[4] ], lookahead=barmerge.lookahead_off)
+[h1_o5,  h1_h5,  h1_l5,  h1_c5 ] = request.security(syminfo.tickerid, htf1TF, [open[5],  high[5],  low[5],  close[5] ], lookahead=barmerge.lookahead_off)
+[h1_o6,  h1_h6,  h1_l6,  h1_c6 ] = request.security(syminfo.tickerid, htf1TF, [open[6],  high[6],  low[6],  close[6] ], lookahead=barmerge.lookahead_off)
+[h1_o7,  h1_h7,  h1_l7,  h1_c7 ] = request.security(syminfo.tickerid, htf1TF, [open[7],  high[7],  low[7],  close[7] ], lookahead=barmerge.lookahead_off)
+[h1_o8,  h1_h8,  h1_l8,  h1_c8 ] = request.security(syminfo.tickerid, htf1TF, [open[8],  high[8],  low[8],  close[8] ], lookahead=barmerge.lookahead_off)
+[h1_o9,  h1_h9,  h1_l9,  h1_c9 ] = request.security(syminfo.tickerid, htf1TF, [open[9],  high[9],  low[9],  close[9] ], lookahead=barmerge.lookahead_off)
+[h1_o10, h1_h10, h1_l10, h1_c10] = request.security(syminfo.tickerid, htf1TF, [open[10], high[10], low[10], close[10]], lookahead=barmerge.lookahead_off)
+[h1_o11, h1_h11, h1_l11, h1_c11] = request.security(syminfo.tickerid, htf1TF, [open[11], high[11], low[11], close[11]], lookahead=barmerge.lookahead_off)
+[h1_o12, h1_h12, h1_l12, h1_c12] = request.security(syminfo.tickerid, htf1TF, [open[12], high[12], low[12], close[12]], lookahead=barmerge.lookahead_off)
+[h1_o13, h1_h13, h1_l13, h1_c13] = request.security(syminfo.tickerid, htf1TF, [open[13], high[13], low[13], close[13]], lookahead=barmerge.lookahead_off)
+[h1_o14, h1_h14, h1_l14, h1_c14] = request.security(syminfo.tickerid, htf1TF, [open[14], high[14], low[14], close[14]], lookahead=barmerge.lookahead_off)
+[h1_o15, h1_h15, h1_l15, h1_c15] = request.security(syminfo.tickerid, htf1TF, [open[15], high[15], low[15], close[15]], lookahead=barmerge.lookahead_off)
+[h1_o16, h1_h16, h1_l16, h1_c16] = request.security(syminfo.tickerid, htf1TF, [open[16], high[16], low[16], close[16]], lookahead=barmerge.lookahead_off)
+[h1_o17, h1_h17, h1_l17, h1_c17] = request.security(syminfo.tickerid, htf1TF, [open[17], high[17], low[17], close[17]], lookahead=barmerge.lookahead_off)
+[h1_o18, h1_h18, h1_l18, h1_c18] = request.security(syminfo.tickerid, htf1TF, [open[18], high[18], low[18], close[18]], lookahead=barmerge.lookahead_off)
+[h1_o19, h1_h19, h1_l19, h1_c19] = request.security(syminfo.tickerid, htf1TF, [open[19], high[19], low[19], close[19]], lookahead=barmerge.lookahead_off)
+[h1_o20, h1_h20, h1_l20, h1_c20] = request.security(syminfo.tickerid, htf1TF, [open[20], high[20], low[20], close[20]], lookahead=barmerge.lookahead_off)
+[h1_o21, h1_h21, h1_l21, h1_c21] = request.security(syminfo.tickerid, htf1TF, [open[21], high[21], low[21], close[21]], lookahead=barmerge.lookahead_off)
+[h1_o22, h1_h22, h1_l22, h1_c22] = request.security(syminfo.tickerid, htf1TF, [open[22], high[22], low[22], close[22]], lookahead=barmerge.lookahead_off)
+[h1_o23, h1_h23, h1_l23, h1_c23] = request.security(syminfo.tickerid, htf1TF, [open[23], high[23], low[23], close[23]], lookahead=barmerge.lookahead_off)
+[h1_o24, h1_h24, h1_l24, h1_c24] = request.security(syminfo.tickerid, htf1TF, [open[24], high[24], low[24], close[24]], lookahead=barmerge.lookahead_off)
 
-// ── HTF 2 Data ────────────────────────────────────────────────────────────────
-// Max 10 candles.
-float[] htf2_o = request.security(syminfo.tickerid, htf2TF, array.from(
-    open,    open[1], open[2], open[3], open[4],
-    open[5], open[6], open[7], open[8], open[9]))
-float[] htf2_h = request.security(syminfo.tickerid, htf2TF, array.from(
-    high,    high[1], high[2], high[3], high[4],
-    high[5], high[6], high[7], high[8], high[9]))
-float[] htf2_l = request.security(syminfo.tickerid, htf2TF, array.from(
-    low,     low[1],  low[2],  low[3],  low[4],
-    low[5],  low[6],  low[7],  low[8],  low[9]))
-float[] htf2_c = request.security(syminfo.tickerid, htf2TF, array.from(
-    close,    close[1], close[2], close[3], close[4],
-    close[5], close[6], close[7], close[8], close[9]))
+// ── HTF 2 Data — max 10 candles = 10 calls ───────────────────────────────────
+[h2_o0, h2_h0, h2_l0, h2_c0] = request.security(syminfo.tickerid, htf2TF, [open,    high,    low,    close   ], lookahead=barmerge.lookahead_off)
+[h2_o1, h2_h1, h2_l1, h2_c1] = request.security(syminfo.tickerid, htf2TF, [open[1], high[1], low[1], close[1]], lookahead=barmerge.lookahead_off)
+[h2_o2, h2_h2, h2_l2, h2_c2] = request.security(syminfo.tickerid, htf2TF, [open[2], high[2], low[2], close[2]], lookahead=barmerge.lookahead_off)
+[h2_o3, h2_h3, h2_l3, h2_c3] = request.security(syminfo.tickerid, htf2TF, [open[3], high[3], low[3], close[3]], lookahead=barmerge.lookahead_off)
+[h2_o4, h2_h4, h2_l4, h2_c4] = request.security(syminfo.tickerid, htf2TF, [open[4], high[4], low[4], close[4]], lookahead=barmerge.lookahead_off)
+[h2_o5, h2_h5, h2_l5, h2_c5] = request.security(syminfo.tickerid, htf2TF, [open[5], high[5], low[5], close[5]], lookahead=barmerge.lookahead_off)
+[h2_o6, h2_h6, h2_l6, h2_c6] = request.security(syminfo.tickerid, htf2TF, [open[6], high[6], low[6], close[6]], lookahead=barmerge.lookahead_off)
+[h2_o7, h2_h7, h2_l7, h2_c7] = request.security(syminfo.tickerid, htf2TF, [open[7], high[7], low[7], close[7]], lookahead=barmerge.lookahead_off)
+[h2_o8, h2_h8, h2_l8, h2_c8] = request.security(syminfo.tickerid, htf2TF, [open[8], high[8], low[8], close[8]], lookahead=barmerge.lookahead_off)
+[h2_o9, h2_h9, h2_l9, h2_c9] = request.security(syminfo.tickerid, htf2TF, [open[9], high[9], low[9], close[9]], lookahead=barmerge.lookahead_off)
 
 // ── Drawing State ─────────────────────────────────────────────────────────────
 var box[]   bodyArr  = array.new<box>()
@@ -84,8 +82,6 @@ clearDrawings() =>
     wickArr.clear()
     labelArr.clear()
 
-// Draws one full overlay from pre-fetched OHLC arrays.
-// slot 0 = oldest (leftmost), slot count-1 = current (rightmost).
 drawOverlay(float[] oArr, float[] hArr, float[] lArr, float[] cArr,
             int count, int cWidth, int cGap, int cRight,
             color bullCol, color bearCol, color wickCol, bool showLbl) =>
@@ -102,6 +98,7 @@ drawOverlay(float[] oArr, float[] hArr, float[] lArr, float[] cArr,
         float bodyBot = math.min(o, c)
         color col     = c >= o ? bullCol : bearCol
 
+        // slot 0 = oldest (leftmost), slot count-1 = current (rightmost)
         int slot   = count - 1 - i
         int xLeft  = bar_index + cRight + slot * (cWidth + cGap)
         int xRight = xLeft + cWidth
@@ -127,9 +124,40 @@ drawOverlay(float[] oArr, float[] hArr, float[] lArr, float[] cArr,
 // ── Render ────────────────────────────────────────────────────────────────────
 if barstate.islast
     clearDrawings()
-    drawOverlay(htf1_o, htf1_h, htf1_l, htf1_c,
+
+    float[] h1_o = array.from(h1_o0,  h1_o1,  h1_o2,  h1_o3,  h1_o4,
+                               h1_o5,  h1_o6,  h1_o7,  h1_o8,  h1_o9,
+                               h1_o10, h1_o11, h1_o12, h1_o13, h1_o14,
+                               h1_o15, h1_o16, h1_o17, h1_o18, h1_o19,
+                               h1_o20, h1_o21, h1_o22, h1_o23, h1_o24)
+    float[] h1_h = array.from(h1_h0,  h1_h1,  h1_h2,  h1_h3,  h1_h4,
+                               h1_h5,  h1_h6,  h1_h7,  h1_h8,  h1_h9,
+                               h1_h10, h1_h11, h1_h12, h1_h13, h1_h14,
+                               h1_h15, h1_h16, h1_h17, h1_h18, h1_h19,
+                               h1_h20, h1_h21, h1_h22, h1_h23, h1_h24)
+    float[] h1_l = array.from(h1_l0,  h1_l1,  h1_l2,  h1_l3,  h1_l4,
+                               h1_l5,  h1_l6,  h1_l7,  h1_l8,  h1_l9,
+                               h1_l10, h1_l11, h1_l12, h1_l13, h1_l14,
+                               h1_l15, h1_l16, h1_l17, h1_l18, h1_l19,
+                               h1_l20, h1_l21, h1_l22, h1_l23, h1_l24)
+    float[] h1_c = array.from(h1_c0,  h1_c1,  h1_c2,  h1_c3,  h1_c4,
+                               h1_c5,  h1_c6,  h1_c7,  h1_c8,  h1_c9,
+                               h1_c10, h1_c11, h1_c12, h1_c13, h1_c14,
+                               h1_c15, h1_c16, h1_c17, h1_c18, h1_c19,
+                               h1_c20, h1_c21, h1_c22, h1_c23, h1_c24)
+
+    float[] h2_o = array.from(h2_o0, h2_o1, h2_o2, h2_o3, h2_o4,
+                               h2_o5, h2_o6, h2_o7, h2_o8, h2_o9)
+    float[] h2_h = array.from(h2_h0, h2_h1, h2_h2, h2_h3, h2_h4,
+                               h2_h5, h2_h6, h2_h7, h2_h8, h2_h9)
+    float[] h2_l = array.from(h2_l0, h2_l1, h2_l2, h2_l3, h2_l4,
+                               h2_l5, h2_l6, h2_l7, h2_l8, h2_l9)
+    float[] h2_c = array.from(h2_c0, h2_c1, h2_c2, h2_c3, h2_c4,
+                               h2_c5, h2_c6, h2_c7, h2_c8, h2_c9)
+
+    drawOverlay(h1_o, h1_h, h1_l, h1_c,
                 htf1Count, htf1Width, htf1Gap, htf1Right,
                 htf1Bull, htf1Bear, htf1Wick, htf1Labels)
-    drawOverlay(htf2_o, htf2_h, htf2_l, htf2_c,
+    drawOverlay(h2_o, h2_h, h2_l, h2_c,
                 htf2Count, htf2Width, htf2Gap, htf2Right,
                 htf2Bull, htf2Bear, htf2Wick, htf2Labels)
