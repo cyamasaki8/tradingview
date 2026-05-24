@@ -1,0 +1,135 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © cyamactive8
+
+//@version=6
+indicator("HTF Dual Candle Overlay", overlay=true, max_boxes_count=50, max_lines_count=120, max_labels_count=50)
+
+// ── Overlay 1 Inputs ──────────────────────────────────────────────────────────
+string g1  = "── Overlay 1 ──"
+htf1TF     = input.timeframe("60",  "Timeframe",                         group=g1)
+htf1Count  = input.int(23, "Candles to Show", minval=1, maxval=25,       group=g1)
+htf1Width  = input.int(3,  "Candle Width (bars)",  minval=2, maxval=20,  group=g1)
+htf1Gap    = input.int(1,  "Gap Between Candles",  minval=0, maxval=10,  group=g1)
+htf1Right  = input.int(5,  "Gap Right of Last Bar", minval=0, maxval=50, group=g1)
+htf1Labels = input.bool(true, "Show Labels",                              group=g1)
+htf1Bull   = input.color(color.new(color.teal,   15), "Bullish Body",    group=g1)
+htf1Bear   = input.color(color.new(color.maroon, 15), "Bearish Body",    group=g1)
+htf1Wick   = input.color(color.new(color.gray,   20), "Wick",            group=g1)
+
+// ── Overlay 2 Inputs ──────────────────────────────────────────────────────────
+string g2  = "── Overlay 2 ──"
+htf2TF     = input.timeframe("W",   "Timeframe",                          group=g2)
+htf2Count  = input.int(4,  "Candles to Show", minval=1, maxval=10,        group=g2)
+htf2Width  = input.int(7,  "Candle Width (bars)",  minval=2, maxval=30,   group=g2)
+htf2Gap    = input.int(3,  "Gap Between Candles",  minval=0, maxval=10,   group=g2)
+htf2Right  = input.int(100, "Gap Right of Last Bar", minval=0, maxval=200, group=g2)
+htf2Labels = input.bool(true, "Show Labels",                               group=g2)
+htf2Bull   = input.color(color.new(color.green,  25), "Bullish Body",     group=g2)
+htf2Bear   = input.color(color.new(color.red,    25), "Bearish Body",     group=g2)
+htf2Wick   = input.color(color.new(color.silver, 30), "Wick",             group=g2)
+
+// ── HTF 1 Data ────────────────────────────────────────────────────────────────
+// array.from() inside request.security() evaluates each [n] in the HTF context,
+// so index 0 = current HTF bar, index N = N HTF bars ago. Max 25 candles.
+float[] htf1_o = request.security(syminfo.tickerid, htf1TF, array.from(
+    open,     open[1],  open[2],  open[3],  open[4],
+    open[5],  open[6],  open[7],  open[8],  open[9],
+    open[10], open[11], open[12], open[13], open[14],
+    open[15], open[16], open[17], open[18], open[19],
+    open[20], open[21], open[22], open[23], open[24]))
+float[] htf1_h = request.security(syminfo.tickerid, htf1TF, array.from(
+    high,     high[1],  high[2],  high[3],  high[4],
+    high[5],  high[6],  high[7],  high[8],  high[9],
+    high[10], high[11], high[12], high[13], high[14],
+    high[15], high[16], high[17], high[18], high[19],
+    high[20], high[21], high[22], high[23], high[24]))
+float[] htf1_l = request.security(syminfo.tickerid, htf1TF, array.from(
+    low,      low[1],   low[2],   low[3],   low[4],
+    low[5],   low[6],   low[7],   low[8],   low[9],
+    low[10],  low[11],  low[12],  low[13],  low[14],
+    low[15],  low[16],  low[17],  low[18],  low[19],
+    low[20],  low[21],  low[22],  low[23],  low[24]))
+float[] htf1_c = request.security(syminfo.tickerid, htf1TF, array.from(
+    close,     close[1],  close[2],  close[3],  close[4],
+    close[5],  close[6],  close[7],  close[8],  close[9],
+    close[10], close[11], close[12], close[13], close[14],
+    close[15], close[16], close[17], close[18], close[19],
+    close[20], close[21], close[22], close[23], close[24]))
+
+// ── HTF 2 Data ────────────────────────────────────────────────────────────────
+// Max 10 candles.
+float[] htf2_o = request.security(syminfo.tickerid, htf2TF, array.from(
+    open,    open[1], open[2], open[3], open[4],
+    open[5], open[6], open[7], open[8], open[9]))
+float[] htf2_h = request.security(syminfo.tickerid, htf2TF, array.from(
+    high,    high[1], high[2], high[3], high[4],
+    high[5], high[6], high[7], high[8], high[9]))
+float[] htf2_l = request.security(syminfo.tickerid, htf2TF, array.from(
+    low,     low[1],  low[2],  low[3],  low[4],
+    low[5],  low[6],  low[7],  low[8],  low[9]))
+float[] htf2_c = request.security(syminfo.tickerid, htf2TF, array.from(
+    close,    close[1], close[2], close[3], close[4],
+    close[5], close[6], close[7], close[8], close[9]))
+
+// ── Drawing State ─────────────────────────────────────────────────────────────
+var box[]   bodyArr  = array.new<box>()
+var line[]  wickArr  = array.new<line>()
+var label[] labelArr = array.new<label>()
+
+clearDrawings() =>
+    for b   in bodyArr  : b.delete()
+    for w   in wickArr  : w.delete()
+    for lbl in labelArr : lbl.delete()
+    bodyArr.clear()
+    wickArr.clear()
+    labelArr.clear()
+
+// Draws one full overlay from pre-fetched OHLC arrays.
+// slot 0 = oldest (leftmost), slot count-1 = current (rightmost).
+drawOverlay(float[] oArr, float[] hArr, float[] lArr, float[] cArr,
+            int count, int cWidth, int cGap, int cRight,
+            color bullCol, color bearCol, color wickCol, bool showLbl) =>
+    for i = 0 to count - 1
+        float o = oArr.get(i)
+        float h = hArr.get(i)
+        float l = lArr.get(i)
+        float c = cArr.get(i)
+
+        if na(o) or na(h) or na(l) or na(c)
+            continue
+
+        float bodyTop = math.max(o, c)
+        float bodyBot = math.min(o, c)
+        color col     = c >= o ? bullCol : bearCol
+
+        int slot   = count - 1 - i
+        int xLeft  = bar_index + cRight + slot * (cWidth + cGap)
+        int xRight = xLeft + cWidth
+        int xMid   = xLeft + int(cWidth / 2)
+
+        bodyArr.push(box.new(xLeft, bodyTop, xRight, bodyBot,
+             xloc=xloc.bar_index, bgcolor=col, border_color=col))
+
+        if h > bodyTop
+            wickArr.push(line.new(xMid, h, xMid, bodyTop,
+                 xloc=xloc.bar_index, color=wickCol, width=1))
+        if l < bodyBot
+            wickArr.push(line.new(xMid, bodyBot, xMid, l,
+                 xloc=xloc.bar_index, color=wickCol, width=1))
+
+        if showLbl
+            string txt = i == 0 ? "C" : str.tostring(i)
+            labelArr.push(label.new(xMid, h, txt,
+                 xloc=xloc.bar_index, yloc=yloc.abovebar,
+                 color=color.new(color.white, 100), textcolor=color.gray,
+                 size=size.tiny, style=label.style_none))
+
+// ── Render ────────────────────────────────────────────────────────────────────
+if barstate.islast
+    clearDrawings()
+    drawOverlay(htf1_o, htf1_h, htf1_l, htf1_c,
+                htf1Count, htf1Width, htf1Gap, htf1Right,
+                htf1Bull, htf1Bear, htf1Wick, htf1Labels)
+    drawOverlay(htf2_o, htf2_h, htf2_l, htf2_c,
+                htf2Count, htf2Width, htf2Gap, htf2Right,
+                htf2Bull, htf2Bear, htf2Wick, htf2Labels)
