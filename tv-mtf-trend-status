@@ -1,0 +1,91 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © cyamactive8
+
+//@version=6
+indicator("MTF Trend Status", overlay=true)
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+string g1  = "── Trend ──"
+emaFast    = input.int(9,  "Fast EMA", minval=1, group=g1)
+emaSlow    = input.int(21, "Slow EMA", minval=1, group=g1)
+
+string g2  = "── Display ──"
+tablePos   = input.string("Top Right", "Position",
+     options=["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group=g2)
+bullCol    = input.color(#26a69a, "Bull Color", group=g2)
+bearCol    = input.color(#ef5350, "Bear Color", group=g2)
+bgTrans    = input.int(20, "Background Transparency", minval=0, maxval=100, group=g2)
+
+string g3  = "── Timeframes ──"
+show1m  = input.bool(true, "1m",  group=g3)
+show3m  = input.bool(true, "3m",  group=g3)
+show5m  = input.bool(true, "5m",  group=g3)
+show15m = input.bool(true, "15m", group=g3)
+show1h  = input.bool(true, "1h",  group=g3)
+show4h  = input.bool(true, "4h",  group=g3)
+showD   = input.bool(true, "D",   group=g3)
+showW   = input.bool(true, "W",   group=g3)
+
+// ── Trend: fast EMA above slow EMA = bullish ──────────────────────────────────
+bull() => ta.ema(close, emaFast) > ta.ema(close, emaSlow)
+
+t1m  = request.security(syminfo.tickerid, "1",   bull())
+t3m  = request.security(syminfo.tickerid, "3",   bull())
+t5m  = request.security(syminfo.tickerid, "5",   bull())
+t15m = request.security(syminfo.tickerid, "15",  bull())
+t1h  = request.security(syminfo.tickerid, "60",  bull())
+t4h  = request.security(syminfo.tickerid, "240", bull())
+tD   = request.security(syminfo.tickerid, "D",   bull())
+tW   = request.security(syminfo.tickerid, "W",   bull())
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+getPos(p) =>
+    switch p
+        "Top Right"    => position.top_right
+        "Top Left"     => position.top_left
+        "Bottom Right" => position.bottom_right
+        "Bottom Left"  => position.bottom_left
+        =>               position.top_right
+
+rowCount = (show1m ? 1 : 0) + (show3m ? 1 : 0) + (show5m ? 1 : 0) + (show15m ? 1 : 0) +
+           (show1h ? 1 : 0) + (show4h ? 1 : 0) + (showD  ? 1 : 0) + (showW   ? 1 : 0)
+
+bgCell = color.new(color.black, bgTrans)
+
+var table tbl = table.new(getPos(tablePos), 2, rowCount,
+     border_color=color.new(color.gray, 60), border_width=1,
+     frame_color=color.new(color.gray, 40), frame_width=1)
+
+putRow(r, tf, isBull) =>
+    table.cell(tbl, 0, r, tf,
+         text_color=color.white, text_size=size.small,
+         bgcolor=bgCell, text_halign=text.align_left)
+    table.cell(tbl, 1, r, "●",
+         text_color=isBull ? bullCol : bearCol, text_size=size.normal,
+         bgcolor=bgCell, text_halign=text.align_center)
+
+if barstate.islast
+    r = 0
+    if show1m
+        putRow(r, "1m",  t1m)
+        r := r + 1
+    if show3m
+        putRow(r, "3m",  t3m)
+        r := r + 1
+    if show5m
+        putRow(r, "5m",  t5m)
+        r := r + 1
+    if show15m
+        putRow(r, "15m", t15m)
+        r := r + 1
+    if show1h
+        putRow(r, "1h",  t1h)
+        r := r + 1
+    if show4h
+        putRow(r, "4h",  t4h)
+        r := r + 1
+    if showD
+        putRow(r, "D",   tD)
+        r := r + 1
+    if showW
+        putRow(r, "W",   tW)
