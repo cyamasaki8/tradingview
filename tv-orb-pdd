@@ -101,13 +101,14 @@ if at1600
     // Cap and freeze the previous day's PDD line and balloon
     if not na(pddLine)
         pddLine.set_extend(extend.none)
-        pddLine.set_x2(time)
+        pddLine.set_x2(bar_index)
     if not na(pddTag)
         pddTag.delete()
         pddTag := na
     // New PDD from today's 16:00 open, extending right until next at1600
-    pddLine := line.new(time, open, time, open,
-         xloc=xloc.bar_time, color=pddCol, width=pddLineW, extend=extend.right)
+    // Two distinct x points with equal y are required for Pine to know the line is horizontal.
+    pddLine := line.new(bar_index - 1, open, bar_index, open,
+         xloc=xloc.bar_index, color=pddCol, width=pddLineW, extend=extend.right)
     if showPDDLabel
         pddTag := label.new(bar_index, open,
              "PDD\n" + str.tostring(open, format.mintick),
