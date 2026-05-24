@@ -75,9 +75,12 @@ var line[]  wickArr  = array.new<line>()
 var label[] labelArr = array.new<label>()
 
 clearDrawings() =>
-    for b   in bodyArr  : b.delete()
-    for w   in wickArr  : w.delete()
-    for lbl in labelArr : lbl.delete()
+    for b   in bodyArr
+        b.delete()
+    for w   in wickArr
+        w.delete()
+    for lbl in labelArr
+        lbl.delete()
     bodyArr.clear()
     wickArr.clear()
     labelArr.clear()
