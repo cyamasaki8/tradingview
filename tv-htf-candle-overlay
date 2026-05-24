@@ -1,0 +1,106 @@
+/ This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © cyamactive8
+
+//@version=6
+indicator("HTF Candle Offset", overlay=true, max_boxes_count=100, max_lines_count=400, max_labels_count=20)
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+htfTF      = input.timeframe("D",  "Higher Timeframe")
+candleW    = input.int(5,  "Candle Width (bars)",     minval=2, maxval=30)
+gap        = input.int(3,  "Spacing Between Candles", minval=0, maxval=20)
+rightGap   = input.int(8,  "Gap Right of Last Bar",   minval=0, maxval=50)
+showLabels = input.bool(true, "Show Labels")
+
+bullCol = input.color(color.new(color.teal,   15), "Bullish Body")
+bearCol = input.color(color.new(color.maroon, 15), "Bearish Body")
+wickCol = input.color(color.new(color.gray,   20), "Wick")
+
+// ── HTF Data ──────────────────────────────────────────────────────────────────
+// [n] inside request.security() evaluates in HTF bar context, so [1] = 1 HTF
+// period ago regardless of how many chart bars fit inside one HTF period.
+// Applying [n] to the returned series (htf_o[n]) would step back n chart bars,
+// which all land in the same HTF candle on lower timeframes — the original bug.
+[htf_o0, htf_h0, htf_l0, htf_c0] = request.security(syminfo.tickerid, htfTF,
+     [open,    high,    low,    close   ], lookahead=barmerge.lookahead_off)
+[htf_o1, htf_h1, htf_l1, htf_c1] = request.security(syminfo.tickerid, htfTF,
+     [open[1], high[1], low[1], close[1]], lookahead=barmerge.lookahead_off)
+[htf_o2, htf_h2, htf_l2, htf_c2] = request.security(syminfo.tickerid, htfTF,
+     [open[2], high[2], low[2], close[2]], lookahead=barmerge.lookahead_off)
+[htf_o3, htf_h3, htf_l3, htf_c3] = request.security(syminfo.tickerid, htfTF,
+     [open[3], high[3], low[3], close[3]], lookahead=barmerge.lookahead_off)
+
+// ── Drawing State ─────────────────────────────────────────────────────────────
+// v6: generic array.new<T>() replaces type-specific constructors
+var box[]   bodyArr  = array.new<box>()
+var line[]  wickArr  = array.new<line>()
+var label[] labelArr = array.new<label>()
+
+clearDrawings() =>
+    // v6: method syntax — obj.delete() and arr.clear()
+    for b   in bodyArr
+        b.delete()
+    for w   in wickArr
+        w.delete()
+    for lbl in labelArr
+        lbl.delete()
+    bodyArr.clear()
+    wickArr.clear()
+    labelArr.clear()
+
+// ── Draw on Every Tick at Last Bar ────────────────────────────────────────────
+if barstate.islast
+    clearDrawings()
+
+    // Pack per-period requests into arrays for loop access
+    float[] oArr = array.from(htf_o0, htf_o1, htf_o2, htf_o3)
+    float[] hArr = array.from(htf_h0, htf_h1, htf_h2, htf_h3)
+    float[] lArr = array.from(htf_l0, htf_l1, htf_l2, htf_l3)
+    float[] cArr = array.from(htf_c0, htf_c1, htf_c2, htf_c3)
+
+    int N = 4  // current candle + 3 prior
+
+    for i = 0 to N - 1
+        float o = oArr.get(i)
+        float h = hArr.get(i)
+        float l = lArr.get(i)
+        float c = cArr.get(i)
+
+        float bodyTop = math.max(o, c)
+        float bodyBot = math.min(o, c)
+        color col     = c >= o ? bullCol : bearCol
+
+        // slot 0 = oldest (leftmost), slot N-1 = current (rightmost)
+        int slot   = N - 1 - i
+        int xLeft  = bar_index + rightGap + slot * (candleW + gap)
+        int xRight = xLeft + candleW
+        int xMid   = xLeft + int(candleW / 2)
+
+        // Body
+        bodyArr.push(box.new(
+             xLeft, bodyTop, xRight, bodyBot,
+             xloc=xloc.bar_index, bgcolor=col, border_color=col))
+
+        // Upper wick
+        if h > bodyTop
+            wickArr.push(line.new(
+                 xMid, h, xMid, bodyTop,
+                 xloc=xloc.bar_index, color=wickCol, width=1))
+
+        // Lower wick
+        if l < bodyBot
+            wickArr.push(line.new(
+                 xMid, bodyBot, xMid, l,
+                 xloc=xloc.bar_index, color=wickCol, width=1))
+
+        // Label above each candle
+        if showLabels
+            string txt = switch i
+                0 => "Current"
+                1 => "Prev 1"
+                2 => "Prev 2"
+                => "Prev 3"
+            labelArr.push(label.new(
+                 xMid, h, txt,
+                 xloc=xloc.bar_index, yloc=yloc.abovebar,
+                 color=color.new(color.white, 100), textcolor=color.gray,
+                 size=size.tiny, style=label.style_none))
