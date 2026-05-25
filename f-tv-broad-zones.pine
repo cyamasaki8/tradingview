@@ -1,0 +1,142 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0
+// © cyamactive8
+//
+// Broad Supply / Neutral / Demand Zones
+//   Supply (Distribution) — pivot-high based, rose/red fill
+//   Neutral               — midpoint of supply+demand ± ATR, orange fill
+//   Demand (Accumulation) — pivot-low based, green fill
+//
+// Zones self-invalidate when price closes through them.
+// Labels ("Distribution", "Neutral", "Accumulation") are centered in each box.
+
+//@version=6
+indicator("Broad S/N/D Zones [CE]", overlay=true, max_boxes_count=500)
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+pivotStrength = input.int(20, "Pivot Strength", minval=2,
+     tooltip="Bars left+right required to confirm pivot. Higher = fewer, wider zones.")
+atrLength     = input.int(14, "ATR Length",     minval=1,
+     tooltip="ATR period used to size the Neutral band around the midpoint.")
+lblSize       = input.string("Large", "Label Size",
+     options=["Tiny","Small","Normal","Large","Huge"])
+
+// ── Label size helper ─────────────────────────────────────────────────────────
+getLblSz() =>
+    lblSize == "Tiny"   ? size.tiny   :
+         lblSize == "Small"  ? size.small  :
+         lblSize == "Normal" ? size.normal :
+         lblSize == "Huge"   ? size.huge   : size.large
+
+// ── Pivot detection ───────────────────────────────────────────────────────────
+pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
+pivotLow  = ta.pivotlow (low,  pivotStrength, pivotStrength)
+
+var float supplyHigh = na
+var float supplyLow  = na
+var float demandHigh = na
+var float demandLow  = na
+
+if not na(pivotHigh)
+    supplyHigh := pivotHigh
+    supplyLow  := low[pivotStrength]
+
+if not na(pivotLow)
+    demandLow  := pivotLow
+    demandHigh := high[pivotStrength]
+
+// Invalidation — zone collapses when price closes through it
+if not na(supplyLow) and close > supplyHigh
+    supplyHigh := na
+    supplyLow  := na
+
+if not na(demandHigh) and close < demandLow
+    demandHigh := na
+    demandLow  := na
+
+// ── Neutral zone (midpoint ± ATR) ─────────────────────────────────────────────
+float atr           = ta.atr(atrLength)
+float midpoint      = na
+float neutralTop    = na
+float neutralBottom = na
+
+if not na(supplyHigh) and not na(demandLow)
+    midpoint      := (supplyHigh + demandLow) / 2.0
+    neutralTop    := midpoint + atr
+    neutralBottom := midpoint - atr
+
+// ── Zone boxes ────────────────────────────────────────────────────────────────
+var box supplyBox  = na
+var box demandBox  = na
+var box neutralBox = na
+
+// Distribution (Supply)
+if not na(supplyHigh) and not na(supplyLow)
+    if na(supplyBox)
+        supplyBox := box.new(
+             left         = bar_index,
+             top          = supplyHigh,
+             right        = bar_index + 1,
+             bottom       = supplyLow,
+             border_color = color.new(color.red, 0),
+             bgcolor      = color.new(color.red, 85),
+             text         = "Distribution",
+             text_color   = color.white,
+             text_size    = getLblSz(),
+             text_halign  = text.align_center,
+             text_valign  = text.align_center)
+    else
+        box.set_right(supplyBox, bar_index + 1)
+        box.set_top(supplyBox, supplyHigh)
+        box.set_bottom(supplyBox, supplyLow)
+else
+    if not na(supplyBox)
+        box.delete(supplyBox)
+        supplyBox := na
+
+// Accumulation (Demand)
+if not na(demandHigh) and not na(demandLow)
+    if na(demandBox)
+        demandBox := box.new(
+             left         = bar_index,
+             top          = demandHigh,
+             right        = bar_index + 1,
+             bottom       = demandLow,
+             border_color = color.new(color.green, 0),
+             bgcolor      = color.new(color.green, 85),
+             text         = "Accumulation",
+             text_color   = color.white,
+             text_size    = getLblSz(),
+             text_halign  = text.align_center,
+             text_valign  = text.align_center)
+    else
+        box.set_right(demandBox, bar_index + 1)
+        box.set_top(demandBox, demandHigh)
+        box.set_bottom(demandBox, demandLow)
+else
+    if not na(demandBox)
+        box.delete(demandBox)
+        demandBox := na
+
+// Neutral (midpoint ± ATR)
+if not na(neutralTop) and not na(neutralBottom)
+    if na(neutralBox)
+        neutralBox := box.new(
+             left         = bar_index,
+             top          = neutralTop,
+             right        = bar_index + 1,
+             bottom       = neutralBottom,
+             border_color = color.new(color.orange, 0),
+             bgcolor      = color.new(color.orange, 80),
+             text         = "Neutral",
+             text_color   = color.white,
+             text_size    = getLblSz(),
+             text_halign  = text.align_center,
+             text_valign  = text.align_center)
+    else
+        box.set_right(neutralBox, bar_index + 1)
+        box.set_top(neutralBox, neutralTop)
+        box.set_bottom(neutralBox, neutralBottom)
+else
+    if not na(neutralBox)
+        box.delete(neutralBox)
+        neutralBox := na

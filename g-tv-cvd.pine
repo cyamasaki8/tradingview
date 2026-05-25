@@ -1,0 +1,113 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0
+// © cyamactive8
+//
+// Cumulative Volume Delta (CVD) — standalone subpanel indicator
+//
+// Volume split approximation (same as e-tv-vol-delta.pine):
+//   buyFrac  = (close - low) / (high - low)   [0.5 when high == low]
+//   bulls    = volume × buyFrac
+//   bears    = volume × (1 - buyFrac)
+//
+// Three plots:
+//   ① cumBulls  — running ask-side total          (green line)
+//   ② cumBears  — running bid-side total          (red line, histogram baseline)
+//   ③ cumBears + perBarDelta — per-bar pressure   (thin line; fill between ② and ③
+//                                                   pulses green/red each bar)
+//
+// Y-axis labels:
+//   green  = cumBulls
+//   red #1 = cumBears
+//   red #2 = cumBears + perBarDelta  (below baseline = bearish bar; above = bullish)
+//
+// Reset options:
+//   Daily  — resets at midnight ET   (tracks each 24-hr Globex session)
+//   RTH    — resets at 9:30 AM ET    (intraday RTH only)
+//   None   — never resets
+
+//@version=6
+indicator("Cumulative Volume Delta [CE]", overlay=false)
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+var string G1 = "── CVD ──"
+resetMode  = input.string("Daily", "Reset At",
+             options=["Daily","RTH","None"], group=G1,
+             tooltip="Daily = midnight ET | RTH = 9:30 AM ET | None = never resets")
+bullCol    = input.color(color.new(#00897b, 10), "Buy Line Color",     group=G1)
+bearCol    = input.color(color.new(#e53935, 10), "Sell Line Color",    group=G1)
+cvdTrans   = input.int(82, "CVD Fill Transparency",  minval=0, maxval=100, group=G1)
+barTrans   = input.int(55, "Bar Fill Transparency",  minval=0, maxval=100, group=G1)
+lineWidth  = input.int(2,  "Line Width",             minval=1, maxval=4,   group=G1)
+
+// ── Session reset flags ───────────────────────────────────────────────────────
+TZ           = "America/New_York"
+_h           = hour(time,   TZ)
+_m           = minute(time, TZ)
+bool inRTH   = not na(time(timeframe.period, "0930-1600", TZ))
+bool newRTH  = inRTH and not inRTH[1]
+bool midnight = _h == 0 and _m == 0
+
+bool doReset = (resetMode == "Daily" and midnight) or (resetMode == "RTH" and newRTH)
+
+// ── Volume split ──────────────────────────────────────────────────────────────
+float buyFrac     = high == low ? 0.5 : (close - low) / (high - low)
+float bulls       = volume * buyFrac
+float bears       = volume * (1.0 - buyFrac)
+float perBarDelta = bulls - bears
+
+// ── Cumulative totals ─────────────────────────────────────────────────────────
+var float cumBulls = 0.0
+var float cumBears = 0.0
+
+if doReset
+    cumBulls := bulls
+    cumBears := bears
+else
+    cumBulls += bulls
+    cumBears += bears
+
+// ── Per-bar histogram anchored at cumBears ────────────────────────────────────
+// Plots at cumBears + this bar's delta.
+// Below cumBears = bearish candle; above cumBears = bullish candle.
+float histVal  = cumBears + perBarDelta
+color histCol  = perBarDelta >= 0 ? color.new(#00897b, barTrans) : color.new(#e53935, barTrans)
+
+// ── Plots ─────────────────────────────────────────────────────────────────────
+p1 = plot(cumBulls, "Cum Buy",  color=bullCol, linewidth=lineWidth)
+p2 = plot(cumBears, "Cum Sell", color=bearCol, linewidth=lineWidth)
+p3 = plot(histVal,  "Bar Δ",    color=histCol, linewidth=1)
+
+// Fill ①②: overall CVD spread — wide = one side dominating
+color cvdFill = cumBulls >= cumBears ? color.new(#00897b, cvdTrans) : color.new(#e53935, cvdTrans)
+fill(p1, p2, color=cvdFill)
+
+// Fill ②③: per-bar pressure — pulses with each candle's direction
+fill(p2, p3, color=histCol)
+
+// ── Info table (top-right) ────────────────────────────────────────────────────
+var table t = table.new(position.top_right, 2, 4,
+     bgcolor      = color.new(color.black, 60),
+     border_width = 1,
+     border_color = color.new(color.gray, 60))
+
+if barstate.islast
+    color dCol = perBarDelta >= 0 ? color.green : color.red
+
+    table.cell(t, 0, 0, "Cum Buy",
+         text_color=color.white,          text_halign=text.align_left,  text_size=size.small)
+    table.cell(t, 1, 0, str.tostring(cumBulls, "#,###.##"),
+         text_color=color.new(#00897b,0), text_halign=text.align_right, text_size=size.small)
+
+    table.cell(t, 0, 1, "Cum Sell",
+         text_color=color.white,          text_halign=text.align_left,  text_size=size.small)
+    table.cell(t, 1, 1, str.tostring(cumBears, "#,###.##"),
+         text_color=color.new(#e53935,0), text_halign=text.align_right, text_size=size.small)
+
+    table.cell(t, 0, 2, "Bar Δ",
+         text_color=color.white,          text_halign=text.align_left,  text_size=size.small)
+    table.cell(t, 1, 2, str.tostring(perBarDelta, "#,###.##"),
+         text_color=dCol,                 text_halign=text.align_right, text_size=size.small)
+
+    table.cell(t, 0, 3, "Reset",
+         text_color=color.gray,           text_halign=text.align_left,  text_size=size.tiny)
+    table.cell(t, 1, 3, resetMode,
+         text_color=color.gray,           text_halign=text.align_right, text_size=size.tiny)
